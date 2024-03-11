@@ -59,13 +59,13 @@ void loop() {
 }
 
 void displaySensorReadings() {
-  float tank1mA = tankDepth1.getCurrent_mA();
-  float tank2mA = tankDepth2.getCurrent_mA();
+  float tank1mV = tankDepth1.getShuntVoltage_mV();
+  float tank2mV = tankDepth2.getShuntVoltage_mV();
 
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.print("Tank 1: "); display.print(tank1mA); display.println(" V");
-  display.print("Tank 2: "); display.print(tank2mA); display.println(" V");
+  display.print("Tank 1: "); display.print(tank1mV); display.println(" mV");
+  display.print("Tank 2: "); display.print(tank2mV); display.println(" mV");
   display.display();
 }
 
