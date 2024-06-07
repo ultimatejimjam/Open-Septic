@@ -5,16 +5,21 @@
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
-#define motor1 26
-#define motor2 27
+#define motor1 26 // GPIO 26 (Pin 31)
+#define motor2 27 // GPIO 27 (Pin 32)
 
-#define startButton 18
-#define stopButton 19
+#define startButton 18 // GPIO 18 (Pin 24)
+#define stopButton 19 // GPIO 19 (Pin 25)
 
-#define tank1LowSwitch 2
-#define tank1HighSwitch 3
-#define tank2LowSwitch 4
-#define tank2HighSwitch 5
+#define tank1LowSwitch 2 // GPIO 2 (Pin 4)
+#define tank1HighSwitch 3 // GPIO 3 (Pin 5)
+#define tank2LowSwitch 4 // GPIO 4 (Pin 6)
+#define tank2HighSwitch 5 // GPIO 5 (Pin 7)
+
+#define SDA_PIN 0 // GPIO 0 (Pin 1)
+#define SCL_PIN 1 // GPIO 1 (Pin 2)
+
+#define LED_PIN 25 // Onboard LED (GPIO 25, Pin 13)
 
 #define DEBOUNCE_MS 50 // Debounce time in milliseconds
 
@@ -36,6 +41,9 @@ unsigned long pump2StopTime = 0;
 bool pump1Fault = false;
 bool pump2Fault = false;
 
+unsigned long lastBlinkTime = 0;
+const unsigned long blinkInterval = 500; // Blink interval in milliseconds
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 void IRAM_ATTR startButtonISR() {
@@ -48,6 +56,11 @@ void IRAM_ATTR stopButtonISR() {
 
 void setup() {
   Serial.begin(115200);
+
+  // Initialize I2C
+  Wire.setSDA(SDA_PIN);
+  Wire.setSCL(SCL_PIN);
+  Wire.begin();
 
   // Initialize display
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -62,6 +75,7 @@ void setup() {
   pinMode(stopButton, INPUT_PULLUP);
   pinMode(motor1, OUTPUT);
   pinMode(motor2, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
 
   pinMode(tank1LowSwitch, INPUT_PULLUP);
   pinMode(tank1HighSwitch, INPUT_PULLUP);
@@ -74,6 +88,7 @@ void setup() {
 
 void loop() {
   displayTankLevels();
+  blinkLED();
 
   unsigned long currentMillis = millis();
 
@@ -213,4 +228,12 @@ void startMotor(int motor) {
 void stopMotors() {
   digitalWrite(motor1, LOW);
   digitalWrite(motor2, LOW);
+}
+
+void blinkLED() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastBlinkTime >= blinkInterval) {
+    lastBlinkTime = currentMillis;
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN)); // Toggle the LED state
+  }
 }
