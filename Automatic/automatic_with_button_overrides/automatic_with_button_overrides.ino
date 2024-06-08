@@ -11,13 +11,10 @@
 #define startButton 18 // GPIO 18 (Pin 24)
 #define stopButton 19 // GPIO 19 (Pin 25)
 
-#define tank1LowSwitch 2 // GPIO 2 (Pin 4)
-#define tank1HighSwitch 3 // GPIO 3 (Pin 5)
-#define tank2LowSwitch 4 // GPIO 4 (Pin 6)
-#define tank2HighSwitch 5 // GPIO 5 (Pin 7)
-
-#define SDA_PIN 0 // GPIO 0 (Pin 1)
-#define SCL_PIN 1 // GPIO 1 (Pin 2)
+#define tank1LowSwitch 10 // GPIO 10 (Pin 14)
+#define tank1HighSwitch 11 // GPIO 11 (Pin 15)
+#define tank2LowSwitch 14 // GPIO 14 (Pin 19)
+#define tank2HighSwitch 15 // GPIO 15 (Pin 20)
 
 #define LED_PIN 25 // Onboard LED (GPIO 25, Pin 13)
 
@@ -46,20 +43,18 @@ const unsigned long blinkInterval = 500; // Blink interval in milliseconds
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-void IRAM_ATTR startButtonISR() {
+void startButtonISR() {
   startButtonPressed = true;
 }
 
-void IRAM_ATTR stopButtonISR() {
+void stopButtonISR() {
   stopButtonPressed = true;
 }
 
 void setup() {
   Serial.begin(115200);
 
-  // Initialize I2C
-  Wire.setSDA(SDA_PIN);
-  Wire.setSCL(SCL_PIN);
+  // Initialize I2C (default pins)
   Wire.begin();
 
   // Initialize display
