@@ -7,23 +7,19 @@
 
 #define startButton 18 // GPIO 18 (Pin 24)
 #define stopButton 19 // GPIO 19 (Pin 25)
-#define LED_PIN 25 // Onboard LED (GPIO 25, Pin 13)
 
 #define DEBOUNCE_MS 50 // Debounce time in milliseconds
 
-unsigned long lastBlinkTime = 0;
-const unsigned long blinkInterval = 500; // Blink interval in milliseconds
-
-unsigned long lastButtonTime = 0;
-const unsigned long buttonTimeInterval = 600;
+#define PUMP1 26
+#define PUMP2 27
 
 unsigned long lastStartButtonPress = 0;
 unsigned long lastStopButtonPress = 0;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-volatile bool startButtonPressed = false;
-volatile bool stopButtonPressed = false;
+bool startButtonPressed = false;
+bool stopButtonPressed = false;
 
 void setup() {
   Serial.begin(115200);
@@ -48,63 +44,64 @@ void setup() {
 
   pinMode(startButton, INPUT_PULLUP);
   pinMode(stopButton, INPUT_PULLUP);
-  pinMode(LED_PIN, OUTPUT);
-
-  attachInterrupt(digitalPinToInterrupt(startButton), startButtonISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(stopButton), stopButtonISR, FALLING);
+  pinMode(PUMP1, OUTPUT);
+  pinMode(PUMP2, OUTPUT);
 
   display.clearDisplay();
 }
 
 void loop() {
-  blinkLED();
   checkButtons();
-}
-
-void startButtonISR() {
-  unsigned long currentTime = millis();
-  if (currentTime - lastStartButtonPress >= DEBOUNCE_MS) {
-    startButtonPressed = true;
-    lastStartButtonPress = currentTime;
-  }
-}
-
-void stopButtonISR() {
-  unsigned long currentTime = millis();
-  if (currentTime - lastStopButtonPress >= DEBOUNCE_MS) {
-    stopButtonPressed = true;
-    lastStopButtonPress = currentTime;
-  }
-}
-
-void blinkLED() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastBlinkTime >= blinkInterval) {
-    lastBlinkTime = currentMillis;
-    digitalWrite(LED_PIN, !digitalRead(LED_PIN)); // Toggle the LED state
-  }
+  updateDisplay();
 }
 
 void checkButtons() {
-  if (startButtonPressed) {
-    startButtonPressed = false;
-    lastButtonTime = millis();
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.println("Start Button Pressed");
-    display.display();
+  unsigned long currentMillis = millis();
+  
+  if (digitalRead(startButton) == LOW) {
+    if (currentMillis - lastStartButtonPress >= DEBOUNCE_MS) {
+      startButtonPressed = true;
+      lastStartButtonPress = currentMillis;
+    }
   }
+  
+  if (digitalRead(stopButton) == LOW) {
+    if (currentMillis - lastStopButtonPress >= DEBOUNCE_MS) {
+      stopButtonPressed = true;
+      lastStopButtonPress = currentMillis;
+    }
+  }
+}
+
+void updateDisplay() {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
+  if (startButtonPressed) {
+    //digitalWrite(PUMP2, LOW);
+    display.setCursor(0, 20);
+    display.println("Start Button Pressed");
+    //digitalWrite(PUMP1, HIGH);
+  } 
   if (stopButtonPressed) {
-    stopButtonPressed = false;
-    lastButtonTime = millis();
-    display.clearDisplay();
+    //digitalWrite(PUMP1, LOW);
     display.setCursor(0, 20);
     display.println("Stop Button Pressed");
-    display.display();
+    //digitalWrite(PUMP2, HIGH);
+  } 
+  if (!stopButtonPressed && !startButtonPressed) {
+    //digitalWrite(PUMP1, LOW);
+    //digitalWrite(PUMP2, LOW);
+    display.setCursor(0, 20);
+    display.println("Waiting for button press...");
   }
-  else if (millis() > (lastButtonTime + buttonTimeInterval) ){
-    lastButtonTime = millis();
-    display.clearDisplay();
-    display.display();
-  }
+
+  display.display();
+  
+  // Reset button states
+  startButtonPressed = false;
+  stopButtonPressed = false;
+
+  // Small delay to ensure display update
+  delay(1000);
 }
