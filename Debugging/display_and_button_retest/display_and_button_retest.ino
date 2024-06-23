@@ -14,6 +14,9 @@
 unsigned long lastBlinkTime = 0;
 const unsigned long blinkInterval = 500; // Blink interval in milliseconds
 
+unsigned long lastButtonTime = 0;
+const unsigned long buttonTimeInterval = 600;
+
 unsigned long lastStartButtonPress = 0;
 unsigned long lastStopButtonPress = 0;
 
@@ -85,6 +88,7 @@ void blinkLED() {
 void checkButtons() {
   if (startButtonPressed) {
     startButtonPressed = false;
+    lastButtonTime = millis();
     display.clearDisplay();
     display.setCursor(0, 0);
     display.println("Start Button Pressed");
@@ -92,12 +96,14 @@ void checkButtons() {
   }
   if (stopButtonPressed) {
     stopButtonPressed = false;
+    lastButtonTime = millis();
     display.clearDisplay();
     display.setCursor(0, 20);
     display.println("Stop Button Pressed");
     display.display();
   }
-  else {
+  else if (millis() > (lastButtonTime + buttonTimeInterval) ){
+    lastButtonTime = millis();
     display.clearDisplay();
     display.display();
   }
