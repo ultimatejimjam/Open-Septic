@@ -14,7 +14,7 @@ const int pump1Relay = 26;
 const int pump2Relay = 27;
 
 // Current Sensor Safety
-const int currentSensor = 34;
+const int currentSensor = 28;
 
 // Define runtime limits (in milliseconds)
 const unsigned long pump1MaxRunTime = 30 * 60 * 1000; // 30 minutes
@@ -27,6 +27,8 @@ bool pump1Error = false;
 bool pump2Error = false;
 bool emptyTank1;
 bool emptyTank2;
+bool pumping2;
+bool pumping1;
 
 // OLED display settings
 #define SCREEN_WIDTH 128
@@ -40,7 +42,6 @@ void setup() {
   pinMode(tank1High, INPUT_PULLUP);
   pinMode(tank2Low, INPUT_PULLUP);
   pinMode(tank2High, INPUT_PULLUP);
-  pinMode(currentCensor, INPUT);
 
   // Initialize output pins
   pinMode(pump1Relay, OUTPUT);
@@ -64,29 +65,30 @@ void setup() {
 
 void loop() {
   // Read the level switches
-  bool tank1LowLevel  = !digitalRead(tank1Low);
+  // switches should be high when open
+  bool tank1LowLevel  = digitalRead(tank1Low);
   bool tank1HighLevel = digitalRead(tank1High);
-  bool tank2LowLevel  = !digitalRead(tank2Low);
+  bool tank2LowLevel  = digitalRead(tank2Low);
   bool tank2HighLevel = digitalRead(tank2High);
-  int current = analogRead(currentCensor);
+  int current = analogRead(currentSensor);
 
   // Determine tank fill levels
-  String tank1Fill = "Med";
+  String tank1Fill = "Err";
   if (!tank1LowLevel && !tank1HighLevel) {
-    tank1Fill = "Empty";
-    emptyTank1 = 0;
-  } else if (tank1LowLevel && tank1HighLevel) {
-    tank1Fill = "Full";
+    tank1Fill = "Ful";
+  } if (!tank1LowLevel && tank1HighLevel){
+     tank1Fill = "Med";
+  } else if (tank1LowLevel) {
+    tank1Fill = "Emp";
   }
 
-
-  String tank2Fill = "Med";
+  String tank2Fill = "Err";
   if (!tank2LowLevel && !tank2HighLevel) {
-    tank2Fill = "Empty";
-    emptyTank2 = 0;
-  } else if (tank2LowLevel && tank2HighLevel) {
-    tank2Fill = "Full";
-    emptyTank2 = 1;
+    tank2Fill = "Ful";
+  } if (!tank2LowLevel && tank2HighLevel){
+     tank2Fill = "Med";
+  } else if (tank2LowLevel) {
+    tank2Fill = "Emp";
   }
 
   // Display the current state on the OLED
@@ -98,76 +100,95 @@ void loop() {
   display.print("T2: ");
   display.print(tank2Fill);
   display.setCursor(0, 15);
-  display.print("ADC: ")
+  display.print("ADC: ");
   display.print(current);
 
-  if (pump1Error) {
-    display.setCursor(0, 16);
-    display.print("Pump 1 Error!");
-    digitalWrite(pump1Relay, LOW);
-  } else if (pump2Error) {
-    display.setCursor(0, 16);
-    display.print("Pump 2 Error!");
-    digitalWrite(pump2Relay, LOW);
-  } else {
-    if (tank2HighLevel || emptyTank2) {
-      emptyTank2 = 1;
-      // Tank 2 is full, stop pumping into it and check if it needs to be dumped
+  // Error handling: ADC average below threshold
+  static int adcReadings[2] = {0, 0}; // Circular buffer for last two readings
+  adcReadings[0] = adcReadings[1];
+  adcReadings[1] = current;
+  int adcAverage = (adcReadings[0] + adcReadings[1]) / 2;
+
+  static unsigned long pump1StartBuffer = 0;
+  static unsigned long pump2StartBuffer = 0;
+
+  if (pumping1 || pumping2) {
+    // Add a 2-second buffer after starting a pump before checking for ADC errors
+    if ((pumping1 || pumping2) && millis() - pump1StartBuffer < 4000) {
+      adcAverage = 1000; // Force ADC safe for 2 seconds after starting Pump 1
+    }
+
+    if (adcAverage < 275) {
+      pump1Error = true;
+      pump2Error = true;
       digitalWrite(pump1Relay, LOW);
-      if (tank2LowLevel || emptyTank2) {
-        // If Tank 1 is full, dump Tank 2
-        digitalWrite(pump2Relay, HIGH);
-        if (pump2StartTime == 0) {
-          pump2StartTime = millis();
-        }
-        if (millis() - pump2StartTime > pump2MaxRunTime) {
-          pump2Error = true;
-        }
-      } else {
-        digitalWrite(pump2Relay, LOW);
-        pump2StartTime = 0;
-      }
-    } else if (!tank2HighLevel) {
-      // Tank 2 is not full, allow pumping from Tank 1
-      if (tank1HighLevel || emptyTank1) {
-        emptyTank1 = 1;
-        digitalWrite(pump1Relay, HIGH);
-        if (pump1StartTime == 0) {
-          pump1StartTime = millis();
-        }
-        if (millis() - pump1StartTime > pump1MaxRunTime) {
-          pump1Error = true;
-        }
-        digitalWrite(pump2Relay, LOW);
-      } else {
-        digitalWrite(pump1Relay, LOW);
-        pump1StartTime = 0;
-        digitalWrite(pump2Relay, LOW);
-      }
-    } else {
-      // Default case: both tanks are not full or empty
-      digitalWrite(pump1Relay, LOW);
-      pump1StartTime = 0;
       digitalWrite(pump2Relay, LOW);
-      pump2StartTime = 0;
+      displayErrorMessage("ADC Error");
+      return;
     }
   }
 
-  // Display pump error status and operation status
-  display.setCursor(0, 32);
-  if (pump1Error || pump2Error) {
-    if (pump1Error) {
-      display.print("Pump 1 Error");
-    } else {
-      display.print("Pump 2 Error");
+  // Pump 2 logic
+  if (!pumping1 && !pump2Error) {
+    if (tank2Fill == "Ful" && !pumping2) {
+      pumping2 = true;
+      pump2StartTime = millis();
+      digitalWrite(pump2Relay, HIGH);
+    } else if (pumping2) {
+      if (tank2Fill == "Emp" || (millis() - pump2StartTime > 30 * 60 * 1000 && tank1Fill == "Ful")) {
+        pumping2 = false;
+        digitalWrite(pump2Relay, LOW);
+      }
     }
-  } else {
-    display.print("P1: ");
-    display.print(digitalRead(pump1Relay));
-    display.print(" P2: ");
-    display.print(digitalRead(pump2Relay));
+  }
+
+  // Pump 1 logic
+  if (!pumping2 && !pump1Error) {
+    if (tank1Fill == "Ful" && tank2Fill != "Ful" && !pumping1) {
+      pumping1 = true;
+      pump1StartTime = millis();
+      digitalWrite(pump1Relay, HIGH);
+    } else if (pumping1) {
+      if (tank1Fill == "Emp") {
+        pumping1 = false;
+        digitalWrite(pump1Relay, LOW);
+      }
+    }
+  }
+
+  // Display the current state on the OLED
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("T1: ");
+  display.print(tank1Fill);
+  display.setCursor(63, 0);
+  display.print("T2: ");
+  display.print(tank2Fill);
+  display.setCursor(0, 15);
+  display.print("ADC: ");
+  display.print(current);
+  display.setCursor(0, 23);
+
+  if (pumping1){
+    display.print("Pumping Tank 1");
+  }
+  else if (pumping2){
+    display.print("Pumping Tank 2");
+  }
+  else {
+    display.print("System Idle");
   }
 
   display.display();
+
   delay(500); // Update the display every 500 ms
+}
+
+// Helper function to display error messages
+void displayErrorMessage(String message) {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Error: ");
+  display.print(message);
+  display.display();
 }
