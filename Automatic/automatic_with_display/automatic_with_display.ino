@@ -167,7 +167,7 @@ void loop() {
   display.setCursor(0, 15);
   display.print("ADC: ");
   display.print(current);
-  display.setCursor(0, 23);
+  display.setCursor(0, 31);
 
   if (pumping1){
     display.print("Pumping Tank 1");
