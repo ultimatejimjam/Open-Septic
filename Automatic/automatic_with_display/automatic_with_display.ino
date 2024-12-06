@@ -30,6 +30,10 @@ bool emptyTank2;
 bool pumping2;
 bool pumping1;
 
+// Initialiize Tanks as Empty
+String tank1Fill = "Emp";
+String tank2Fill = "Emp"; 
+
 // OLED display settings
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -73,35 +77,28 @@ void loop() {
   int current = analogRead(currentSensor);
 
   // Determine tank fill levels
-  String tank1Fill = "Err";
-  if (!tank1LowLevel && !tank1HighLevel) {
+  // low bool means closed switch & vice-a
+  if (tank1LowLevel && tank1HighLevel) {
     tank1Fill = "Ful";
-  } if (!tank1LowLevel && tank1HighLevel){
+  } if (tank1LowLevel && !tank1HighLevel){
      tank1Fill = "Med";
-  } else if (tank1LowLevel) {
+  } if (!tank1LowLevel && !tank1HighLevel) {
     tank1Fill = "Emp";
+  } else {
+    tank1Fill = "Err";
   }
 
-  String tank2Fill = "Err";
-  if (!tank2LowLevel && !tank2HighLevel) {
+  if (!tank2LowLevel && tank2HighLevel) {
     tank2Fill = "Ful";
-  } if (!tank2LowLevel && tank2HighLevel){
-     tank2Fill = "Med";
-  } else if (tank2LowLevel) {
+  } if (!tank2LowLevel && !tank2HighLevel){
+    tank2Fill = "Med";
+  } if (tank2LowLevel && tank2HighLevel){
     tank2Fill = "Emp";
   }
+  else {
+    tank2Fill = "Err";
+  }
 
-  // Display the current state on the OLED
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print("T1: ");
-  display.print(tank1Fill);
-  display.setCursor(63, 0);
-  display.print("T2: ");
-  display.print(tank2Fill);
-  display.setCursor(0, 15);
-  display.print("ADC: ");
-  display.print(current);
 
   // Error handling: ADC average below threshold
   static int adcReadings[2] = {0, 0}; // Circular buffer for last two readings
