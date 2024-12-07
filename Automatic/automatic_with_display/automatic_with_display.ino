@@ -78,11 +78,11 @@ void loop() {
 
   // Determine tank fill levels
   // low bool means closed switch & vice-a
-  if (tank1LowLevel && tank1HighLevel) {
+  if (!tank1LowLevel && tank1HighLevel) {
     tank1Fill = "Ful";
-  } if (tank1LowLevel && !tank1HighLevel){
+  } else if (!tank1LowLevel && !tank1HighLevel){
      tank1Fill = "Med";
-  } if (!tank1LowLevel && !tank1HighLevel) {
+  } else if (tank1LowLevel && !tank1HighLevel) {
     tank1Fill = "Emp";
   } else {
     tank1Fill = "Err";
@@ -90,15 +90,13 @@ void loop() {
 
   if (!tank2LowLevel && tank2HighLevel) {
     tank2Fill = "Ful";
-  } if (!tank2LowLevel && !tank2HighLevel){
+  } else if (!tank2LowLevel && !tank2HighLevel){
     tank2Fill = "Med";
-  } if (tank2LowLevel && tank2HighLevel){
+  } else if (tank2LowLevel && tank2HighLevel){
     tank2Fill = "Emp";
-  }
-  else {
+  } else {
     tank2Fill = "Err";
   }
-
 
   // Error handling: ADC average below threshold
   static int adcReadings[2] = {0, 0}; // Circular buffer for last two readings
@@ -115,12 +113,20 @@ void loop() {
       adcAverage = 1000; // Force ADC safe for 2 seconds after starting Pump 1
     }
 
-    if (adcAverage < 275) {
+    if (adcAverage < 250 && pumping2) {
       pump1Error = true;
       pump2Error = true;
       digitalWrite(pump1Relay, LOW);
       digitalWrite(pump2Relay, LOW);
-      displayErrorMessage("ADC Error");
+      displayErrorMessage("ADC Error Pump 2");
+      return;
+    }
+    if (adcAverage < 500 && pumping1) {
+      pump1Error = true;
+      pump2Error = true;
+      digitalWrite(pump1Relay, LOW);
+      digitalWrite(pump2Relay, LOW);
+      displayErrorMessage("ADC Error Pump 1");
       return;
     }
   }
