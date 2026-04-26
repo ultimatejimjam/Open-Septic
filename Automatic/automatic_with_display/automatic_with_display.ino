@@ -85,7 +85,7 @@ void loop() {
   } else if (tank1LowLevel && !tank1HighLevel) {
     tank1Fill = "Emp";
   } else {
-    tank1Fill = "Err";
+    //tank1Fill = "Err";
   }
 
   if (!tank2LowLevel && tank2HighLevel) {
@@ -95,7 +95,7 @@ void loop() {
   } else if (tank2LowLevel && tank2HighLevel){
     tank2Fill = "Emp";
   } else {
-    tank2Fill = "Err";
+    //tank2Fill = "Err";
   }
 
   // Error handling: ADC average below threshold
@@ -108,12 +108,12 @@ void loop() {
   static unsigned long pump2StartBuffer = 0;
 
   if (pumping1 || pumping2) {
-    // Add a 2-second buffer after starting a pump before checking for ADC errors
+    // Add a 4-second buffer after starting a pump before checking for ADC errors
     if ((pumping1 || pumping2) && millis() - pump1StartBuffer < 4000) {
       adcAverage = 1000; // Force ADC safe for 2 seconds after starting Pump 1
     }
 
-    if (adcAverage < 250 && pumping2) {
+    if (adcAverage < 200 && pumping2) {
       pump1Error = true;
       pump2Error = true;
       digitalWrite(pump1Relay, LOW);
@@ -121,7 +121,7 @@ void loop() {
       displayErrorMessage("ADC Error Pump 2");
       return;
     }
-    if (adcAverage < 500 && pumping1) {
+    if (adcAverage < 400 && pumping1) {
       pump1Error = true;
       pump2Error = true;
       digitalWrite(pump1Relay, LOW);
@@ -152,7 +152,7 @@ void loop() {
       pump1StartTime = millis();
       digitalWrite(pump1Relay, HIGH);
     } else if (pumping1) {
-      if (tank1Fill == "Emp") {
+      if (tank1Fill == "Emp" || tank2Fill == "Ful") {
         pumping1 = false;
         digitalWrite(pump1Relay, LOW);
       }
